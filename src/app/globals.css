@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+:root {
+  /* ---- ATMIS brand tokens — blue/white, matching the official portal ---- */
+  --color-primary-blue: #1e5aa8;
+  --color-dark-blue: #123b6d;
+  --color-light-blue: #eaf3fb;
+  --color-very-light-blue: #f5f9fd;
+
+  --color-success: #198754;
+  --color-warning: #f59e0b;
+  --color-danger: #dc3545;
+
+  --color-bg: #f5f9fd;
+  --color-card: #ffffff;
+  --color-border: #d9e2ec;
+
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #64748b;
+
+  --background: var(--color-bg);
+  --foreground: var(--color-text-primary);
+}
+
+@theme inline {
+  --color-primary: var(--color-primary-blue);
+  --color-primary-dark: var(--color-dark-blue);
+  --color-primary-light: var(--color-light-blue);
+
+  --color-secondary: var(--color-dark-blue);
+  --color-secondary-light: var(--color-light-blue);
+
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-danger: var(--color-danger);
+
+  --color-bg: var(--color-bg);
+  --color-card: var(--color-card);
+  --color-border: var(--color-border);
+
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+
+  --animate-fade-in: fade-in 0.4s ease-out;
+  --animate-slide-up: slide-up 0.35s ease-out;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+/* visible, high-contrast focus ring everywhere — accessibility requirement */
+:focus-visible {
+  outline: 2.5px solid var(--color-primary-blue);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* skip link for keyboard users */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--color-primary-blue);
+  color: white;
+  padding: 10px 16px;
+  z-index: 100;
+  border-radius: 0 0 8px 0;
+  font-weight: 600;
+}
+.skip-link:focus {
+  left: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+::selection {
+  background: var(--color-light-blue);
+  color: var(--color-dark-blue);
+}
