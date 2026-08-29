@@ -11,6 +11,7 @@ export type AtmisUser = {
   email: string;
   province: string;
   district: string;
+  isAdmin: boolean;
 };
 
 export type RegisterInput = {
@@ -36,7 +37,7 @@ const AuthContext = React.createContext<AuthContextType | null>(null);
 async function loadProfile(supabase: ReturnType<typeof createClient>, userId: string, email: string): Promise<AtmisUser | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("full_name, cnic, phone, province, district")
+    .select("full_name, cnic, phone, province, district, is_admin")
     .eq("id", userId)
     .single();
 
@@ -48,6 +49,7 @@ async function loadProfile(supabase: ReturnType<typeof createClient>, userId: st
     phone: data.phone,
     province: data.province,
     district: data.district,
+    isAdmin: data.is_admin ?? false,
     email,
   };
 }
@@ -123,6 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         phone: input.phone,
         province: input.province,
         district: input.district,
+        isAdmin: false,
         email: input.email,
       });
 

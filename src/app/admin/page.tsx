@@ -3,7 +3,9 @@
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ShieldCheck, ArrowUpDown, MessageSquareText, Loader2 } from "lucide-react";
+import { ShieldCheck, ArrowUpDown, MessageSquareText, Loader2, ShieldAlert } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,12 +37,19 @@ async function fetchQueue(): Promise<QueueApp[]> {
 }
 
 export default function AdminPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [updating, setUpdating] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!loading && !user) router.push("/login");
+  }, [loading, user, router]);
 
   const { data: queue, isLoading, isError } = useQuery({
     queryKey: ["admin-queue"],
     queryFn: fetchQueue,
+    enabled: !!user?.isAdmin, // never even call the API unless we already know they're an admin
   });
 
   async function handleStatusChange(app: QueueApp, newIndex: number) {
@@ -84,6 +93,25 @@ export default function AdminPage() {
     } finally {
       setUpdating(null);
     }
+  }
+
+  if (loading || !user) {
+    return <div className="py-24 text-center text-text-secondary">Loading…</div>;
+  }
+
+  if (!user.isAdmin) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-24 text-center sm:px-6">
+        <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-danger/10">
+          <ShieldAlert className="size-7 text-danger" />
+        </div>
+        <h1 className="mt-4 text-xl font-bold text-text-primary">Access Denied</h1>
+        <p className="mt-2 text-sm text-text-secondary">
+          Your account ({user.email}) doesn&apos;t have admin access. If you believe this is a
+          mistake, contact whoever manages this ATMIS deployment.
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -177,8 +205,8 @@ export default function AdminPage() {
       </Card>
 
       <p className="mt-4 text-xs text-text-secondary">
-        Preview only — no login/role check gates this page yet. Data is real (Supabase), access
-        control is not. Don&apos;t treat this URL as private in production.
+        Gated by a real is_admin flag checked both here and server-side on every API call — not
+        just a UI-level check. Data is real (Supabase), persisted across refreshes.
       </p>
     </div>
   );

@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient, requireAdmin } from "@/lib/supabase/server";
 import { TIMELINE_STAGES } from "@/lib/mock-data";
 import { notifyStatusChange } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 
 export async function GET() {
+  const admin = await requireAdmin();
+  if (!admin) {
+    return NextResponse.json({ success: false, error: "Not authorized." }, { status: 403 });
+  }
+
   const db = createServiceClient();
   const { data, error } = await db
     .from("applications")
@@ -33,6 +38,11 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
+  const admin = await requireAdmin();
+  if (!admin) {
+    return NextResponse.json({ success: false, error: "Not authorized." }, { status: 403 });
+  }
+
   let body: { id?: string; newStageIndex?: number };
   try {
     body = await req.json();

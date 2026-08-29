@@ -41,3 +41,26 @@ export function createServiceClient() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 }
+
+/**
+ * Checks whether the current request comes from a logged-in admin.
+ * Returns null if not — callers should respond 401/403 in that case.
+ * This is the real security boundary; the /admin page's own UI check is
+ * just a convenience, not something a determined caller couldn't bypass by
+ * hitting the API routes directly.
+ */
+export async function requireAdmin(): Promise<{ id: string; email: string } | null> {
+  const authClient = await createServerSupabase();
+  const { data: { user } } = await authClient.auth.getUser();
+  if (!user) return null;
+
+  const service = createServiceClient();
+  const { data: profile } = await service
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile?.is_admin) return null;
+  return { id: user.id, email: user.email ?? "" };
+}
