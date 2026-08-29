@@ -10,23 +10,15 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Timeline } from "@/components/wizard/timeline";
-import { SEED_APPLICATIONS, buildTimeline, TIMELINE_STAGES } from "@/lib/mock-data";
-import { getSessionApps } from "@/lib/session-apps";
+import { buildTimeline, TIMELINE_STAGES } from "@/lib/mock-data";
 
-// simulated network lookup — this is where a real API call would go
 async function lookupApplication(query: string) {
-  await new Promise((r) => setTimeout(r, 500));
-  const q = query.trim().toLowerCase();
+  const q = query.trim();
   if (!q) return null;
 
-  const all = [...SEED_APPLICATIONS, ...getSessionApps()];
-  const match = all.find(
-    (a) =>
-      a.id.toLowerCase() === q ||
-      a.cnic.toLowerCase() === q ||
-      a.phone.toLowerCase() === q
-  );
-  return match ?? null;
+  const res = await fetch(`/api/applications/track?q=${encodeURIComponent(q)}`);
+  const data = await res.json();
+  return data.application ?? null;
 }
 
 function TrackContent() {

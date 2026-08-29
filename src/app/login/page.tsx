@@ -25,18 +25,16 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<LoginValues>({ resolver: zodResolver(loginSchema) });
 
-  function onSubmit(values: LoginValues) {
+  async function onSubmit(values: LoginValues) {
     setSubmitting(true);
     setServerError("");
-    setTimeout(() => {
-      const result = login(values.email, values.password);
-      setSubmitting(false);
-      if (!result.ok) {
-        setServerError(result.error ?? "Login failed.");
-        return;
-      }
-      router.push("/dashboard");
-    }, 400);
+    const result = await login(values.email, values.password);
+    setSubmitting(false);
+    if (!result.ok) {
+      setServerError(result.error ?? "Login failed.");
+      return;
+    }
+    router.push("/dashboard");
   }
 
   return (
@@ -78,7 +76,7 @@ export default function LoginPage() {
             </Button>
 
             <p className="text-center text-xs text-text-secondary">
-              No real credentials are checked against a government system — this is a mock login for the prototype.
+              This checks against a real account created via Supabase Auth — not a government identity system.
             </p>
           </form>
         </CardContent>

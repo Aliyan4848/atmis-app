@@ -63,8 +63,8 @@ export default function ProfilePage() {
       </div>
 
       <button
-        onClick={() => {
-          logout();
+        onClick={async () => {
+          await logout();
           router.push("/");
         }}
         className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg border border-border py-2.5 text-sm font-semibold text-danger hover:bg-danger/5"

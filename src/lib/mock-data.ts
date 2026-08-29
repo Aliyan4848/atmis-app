@@ -88,37 +88,9 @@ export type Application = {
   submittedAt: string;
 };
 
-// ---- in-memory "database" seeded with a few demo records so Track works out of the box ----
-export const SEED_APPLICATIONS: Application[] = [
-  {
-    id: "ATMIS-2026-48213",
-    fullName: "Ayesha Bibi",
-    fatherName: "Muhammad Sharif",
-    cnic: "17301-1234567-1",
-    phone: "0300-1234567",
-    email: "ayesha.demo@example.com",
-    province: "Khyber Pakhtunkhwa",
-    district: "Peshawar",
-    disabilityType: "physical",
-    deviceType: "manual-wheelchair",
-    currentStageIndex: 4,
-    submittedAt: "2026-07-14",
-  },
-  {
-    id: "ATMIS-2026-48099",
-    fullName: "Bilal Ahmed",
-    fatherName: "Ghulam Rasool",
-    cnic: "17301-7654321-3",
-    phone: "0333-9876543",
-    email: "bilal.demo@example.com",
-    province: "Punjab",
-    district: "Lahore",
-    disabilityType: "spinal-cord-injury",
-    deviceType: "power-wheelchair",
-    currentStageIndex: 7,
-    submittedAt: "2026-06-02",
-  },
-];
+// Demo application data now lives in Supabase (see supabase/schema.sql for
+// the seed insert), not here — this in-memory array was the pre-database
+// stand-in and is no longer used by any page.
 
 export function buildTimeline(currentStageIndex: number): TimelineEvent[] {
   const officers = [

@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ShieldCheck, ArrowUpDown, MessageSquareText } from "lucide-react";
+import { ShieldCheck, ArrowUpDown, MessageSquareText, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SEED_APPLICATIONS, TIMELINE_STAGES, DEVICE_TYPES } from "@/lib/mock-data";
+import { TIMELINE_STAGES, DEVICE_TYPES } from "@/lib/mock-data";
 
 type QueueApp = {
   id: string;
@@ -20,60 +21,55 @@ type QueueApp = {
   submittedAt: string;
 };
 
-const INITIAL_QUEUE: QueueApp[] = [
-  ...SEED_APPLICATIONS.map((a) => ({
-    id: a.id, fullName: a.fullName, cnic: a.cnic, phone: a.phone, email: a.email,
-    province: a.province, deviceType: a.deviceType, currentStageIndex: a.currentStageIndex,
-    submittedAt: a.submittedAt,
-  })),
-  {
-    id: "ATMIS-2026-48301", fullName: "Sana Malik", cnic: "42101-1122334-5", phone: "0321-4455667",
-    email: "sana.malik.demo@example.com", province: "Sindh", deviceType: "rollator",
-    currentStageIndex: 1, submittedAt: "2026-08-01",
-  },
-  {
-    id: "ATMIS-2026-48287", fullName: "Usman Tariq", cnic: "35202-9988776-2", phone: "0345-1122334",
-    email: "usman.tariq.demo@example.com", province: "Balochistan", deviceType: "power-wheelchair",
-    currentStageIndex: 0, submittedAt: "2026-08-05",
-  },
-];
-
 function statusVariant(stageIndex: number): "warning" | "secondary" | "success" {
   if (stageIndex >= TIMELINE_STAGES.length - 1) return "success";
   if (stageIndex <= 1) return "warning";
   return "secondary";
 }
 
+async function fetchQueue(): Promise<QueueApp[]> {
+  const res = await fetch("/api/applications/admin");
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error ?? "Could not load applications.");
+  return data.applications;
+}
+
 export default function AdminPage() {
-  const [queue, setQueue] = React.useState<QueueApp[]>(INITIAL_QUEUE);
+  const queryClient = useQueryClient();
   const [updating, setUpdating] = React.useState<string | null>(null);
+
+  const { data: queue, isLoading, isError } = useQuery({
+    queryKey: ["admin-queue"],
+    queryFn: fetchQueue,
+  });
 
   async function handleStatusChange(app: QueueApp, newIndex: number) {
     if (newIndex === app.currentStageIndex) return;
-    const previousStatus = TIMELINE_STAGES[app.currentStageIndex];
     const newStatus = TIMELINE_STAGES[newIndex];
 
     setUpdating(app.id);
-    setQueue((prev) => prev.map((a) => (a.id === app.id ? { ...a, currentStageIndex: newIndex } : a)));
-
     try {
-      const res = await fetch("/api/notifications", {
-        method: "POST",
+      const res = await fetch("/api/applications/admin", {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          event: "status-change",
-          application: { id: app.id, fullName: app.fullName, email: app.email, phone: app.phone },
-          previousStatus,
-          newStatus,
-        }),
+        body: JSON.stringify({ id: app.id, newStageIndex: newIndex }),
       });
       const result = await res.json();
+
+      if (!result.success) {
+        toast.error(result.error ?? "Could not update status.");
+        return;
+      }
+
+      queryClient.setQueryData<QueueApp[]>(["admin-queue"], (prev) =>
+        prev?.map((a) => (a.id === app.id ? { ...a, currentStageIndex: newIndex } : a))
+      );
 
       toast.success(`${app.id} moved to "${newStatus}"`, {
         description: result.email?.success
           ? "Email sent."
           : result.email?.configured === false
-            ? "Email not sent — RESEND_API_KEY isn't configured (expected in this prototype)."
+            ? "Email not sent — RESEND_API_KEY isn't configured."
             : "Email failed to send.",
       });
 
@@ -84,7 +80,7 @@ export default function AdminPage() {
         });
       }
     } catch {
-      toast.error("Could not reach the notification service.");
+      toast.error("Could not reach the server.");
     } finally {
       setUpdating(null);
     }
@@ -99,71 +95,90 @@ export default function AdminPage() {
         <div>
           <h1 className="text-xl font-bold text-text-primary sm:text-2xl">Admin Review Queue</h1>
           <p className="text-sm text-text-secondary">
-            Change a status to trigger a real email attempt + a mock SMS — no real backend or auth here.
+            Backed by a real Supabase table — status changes persist and trigger email + mock SMS.
           </p>
         </div>
       </div>
 
       <Card className="mt-6">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px] text-sm">
-              <thead>
-                <tr className="border-b border-border bg-bg text-left text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                  <th className="px-5 py-3">
-                    <span className="flex items-center gap-1">Request ID <ArrowUpDown className="size-3" /></span>
-                  </th>
-                  <th className="px-5 py-3">Applicant</th>
-                  <th className="px-5 py-3">Province</th>
-                  <th className="px-5 py-3">Device</th>
-                  <th className="px-5 py-3">Submitted</th>
-                  <th className="px-5 py-3">Status</th>
-                  <th className="px-5 py-3 text-right">Change Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {queue.map((app) => (
-                  <tr key={app.id} className="border-b border-border last:border-0 hover:bg-bg/60">
-                    <td className="px-5 py-3.5 font-mono text-xs font-semibold text-text-primary">{app.id}</td>
-                    <td className="px-5 py-3.5 font-medium text-text-primary">{app.fullName}</td>
-                    <td className="px-5 py-3.5 text-text-secondary">{app.province}</td>
-                    <td className="px-5 py-3.5 text-text-secondary">
-                      {DEVICE_TYPES.find((d) => d.value === app.deviceType)?.label ?? app.deviceType}
-                    </td>
-                    <td className="px-5 py-3.5 text-text-secondary">{app.submittedAt}</td>
-                    <td className="px-5 py-3.5">
-                      <Badge variant={statusVariant(app.currentStageIndex)}>
-                        {TIMELINE_STAGES[app.currentStageIndex]}
-                      </Badge>
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <Select
-                        value={String(app.currentStageIndex)}
-                        onValueChange={(v) => handleStatusChange(app, Number(v))}
-                        disabled={updating === app.id}
-                      >
-                        <SelectTrigger className="ml-auto h-9 w-[180px] text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TIMELINE_STAGES.map((stage, i) => (
-                            <SelectItem key={stage} value={String(i)}>{stage}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
+          {isLoading && (
+            <div className="flex items-center justify-center gap-2 py-16 text-sm text-text-secondary">
+              <Loader2 className="size-4 animate-spin" /> Loading applications…
+            </div>
+          )}
+
+          {isError && (
+            <div className="p-6 text-sm text-danger">
+              Could not load applications. Check that Supabase environment variables are configured.
+            </div>
+          )}
+
+          {queue && queue.length === 0 && (
+            <div className="p-8 text-center text-sm text-text-secondary">
+              No applications yet. Submit one through the Apply flow to see it here.
+            </div>
+          )}
+
+          {queue && queue.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[820px] text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-bg text-left text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                    <th className="px-5 py-3">
+                      <span className="flex items-center gap-1">Request ID <ArrowUpDown className="size-3" /></span>
+                    </th>
+                    <th className="px-5 py-3">Applicant</th>
+                    <th className="px-5 py-3">Province</th>
+                    <th className="px-5 py-3">Device</th>
+                    <th className="px-5 py-3">Submitted</th>
+                    <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3 text-right">Change Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {queue.map((app) => (
+                    <tr key={app.id} className="border-b border-border last:border-0 hover:bg-bg/60">
+                      <td className="px-5 py-3.5 font-mono text-xs font-semibold text-text-primary">{app.id}</td>
+                      <td className="px-5 py-3.5 font-medium text-text-primary">{app.fullName}</td>
+                      <td className="px-5 py-3.5 text-text-secondary">{app.province}</td>
+                      <td className="px-5 py-3.5 text-text-secondary">
+                        {DEVICE_TYPES.find((d) => d.value === app.deviceType)?.label ?? app.deviceType}
+                      </td>
+                      <td className="px-5 py-3.5 text-text-secondary">{app.submittedAt}</td>
+                      <td className="px-5 py-3.5">
+                        <Badge variant={statusVariant(app.currentStageIndex)}>
+                          {TIMELINE_STAGES[app.currentStageIndex]}
+                        </Badge>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <Select
+                          value={String(app.currentStageIndex)}
+                          onValueChange={(v) => handleStatusChange(app, Number(v))}
+                          disabled={updating === app.id}
+                        >
+                          <SelectTrigger className="ml-auto h-9 w-[180px] text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TIMELINE_STAGES.map((stage, i) => (
+                              <SelectItem key={stage} value={String(i)}>{stage}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       <p className="mt-4 text-xs text-text-secondary">
-        Preview only — this queue is not connected to a real backend or authentication. Status
-        changes here update in-memory state and attempt a real email (via Resend, if configured)
-        plus a mock SMS log entry — nothing is written to a database.
+        Preview only — no login/role check gates this page yet. Data is real (Supabase), access
+        control is not. Don&apos;t treat this URL as private in production.
       </p>
     </div>
   );

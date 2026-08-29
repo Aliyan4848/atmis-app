@@ -6,8 +6,7 @@ import { ArrowLeft, Pencil, Loader2, ShieldAlert, CheckCircle2 } from "lucide-re
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useWizard } from "@/lib/wizard-context";
-import { DEVICE_TYPES, DISABILITY_TYPES, SEED_APPLICATIONS, genApplicationId } from "@/lib/mock-data";
-import { getSessionApps, addSessionApp } from "@/lib/session-apps";
+import { DEVICE_TYPES, DISABILITY_TYPES } from "@/lib/mock-data";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -58,59 +57,55 @@ export function StepReview({ onBack, onEdit }: { onBack: () => void; onEdit: (st
   const deviceLabel = DEVICE_TYPES.find((d) => d.value === data.deviceType)?.label ?? data.deviceType;
   const disabilityLabel = DISABILITY_TYPES.find((d) => d.value === data.disabilityType)?.label ?? data.disabilityType;
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!confirmed) {
       setConfirmError("Please confirm the information is accurate before submitting.");
       return;
     }
     setConfirmError("");
-
-    // duplicate-application detection against seeded demo records AND anything
-    // actually submitted earlier this session (previously this only checked the
-    // two seeded records, so resubmitting the same CNIC/phone/email twice in a
-    // row during testing was never caught — fixed to check both sources)
-    const candidates = [...SEED_APPLICATIONS, ...getSessionApps()];
-    const dup = candidates.find(
-      (a) =>
-        (data.cnic && a.cnic === data.cnic) ||
-        (data.phone && a.phone === data.phone) ||
-        (data.email && "email" in a && a.email && a.email.toLowerCase() === data.email.toLowerCase())
-    );
-    if (dup) {
-      setDuplicate({ id: dup.id, fullName: dup.fullName });
-      return;
-    }
-
     setSubmitting(true);
-    const id = genApplicationId();
-    setTimeout(() => {
-      // record this submission so both the duplicate check above and the
-      // Track page can find it later in this session
-      addSessionApp({
-        id,
-        fullName: data.fullName,
-        cnic: data.cnic,
-        phone: data.phone,
-        email: data.email,
-        deviceType: data.deviceType,
-        submittedAt: new Date().toISOString().slice(0, 10),
-        currentStageIndex: 0,
-      });
 
-      // best-effort — notifications never block the user's flow, even if
-      // email/SMS fail or aren't configured
-      fetch("/api/notifications", {
+    try {
+      const res = await fetch("/api/applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          event: "submitted",
-          application: { id, fullName: data.fullName, email: data.email, phone: data.phone },
+          fullName: data.fullName,
+          fatherName: data.fatherName,
+          cnic: data.cnic,
+          phone: data.phone,
+          email: data.email,
+          province: data.province,
+          district: data.district,
+          tehsil: data.tehsil,
+          address: data.address,
+          disabilityType: data.disabilityType,
+          disabilityPercentage: data.disabilityPercentage,
+          deviceType: data.deviceType,
+          reason: data.reason,
+          cnicDocName: data.cnicDocName,
+          medicalCertName: data.medicalCertName,
         }),
-      }).catch(() => {});
+      });
+      const result = await res.json();
+
+      if (!result.success && result.duplicate) {
+        setDuplicate(result.duplicate);
+        setSubmitting(false);
+        return;
+      }
+      if (!result.success) {
+        setConfirmError(result.error ?? "Something went wrong submitting your application. Please try again.");
+        setSubmitting(false);
+        return;
+      }
 
       reset();
-      router.push(`/apply/success?id=${id}`);
-    }, 900);
+      router.push(`/apply/success?id=${result.id}`);
+    } catch {
+      setConfirmError("Could not reach the server. Check your connection and try again.");
+      setSubmitting(false);
+    }
   }
 
   return (

@@ -10,10 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { forgotPasswordSchema, type ForgotPasswordValues } from "@/lib/validation";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ForgotPasswordPage() {
   const [sent, setSent] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
+  const supabase = React.useMemo(() => createClient(), []);
 
   const {
     register,
@@ -22,12 +24,16 @@ export default function ForgotPasswordPage() {
     formState: { errors },
   } = useForm<ForgotPasswordValues>({ resolver: zodResolver(forgotPasswordSchema) });
 
-  function onSubmit() {
+  async function onSubmit(values: ForgotPasswordValues) {
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
-      setSent(true);
-    }, 600);
+    // Supabase intentionally doesn't reveal whether the email exists — same
+    // "check your email" message either way, which is the correct security
+    // behavior (don't let this endpoint be used to enumerate real accounts).
+    await supabase.auth.resetPasswordForEmail(values.email, {
+      redirectTo: typeof window !== "undefined" ? `${window.location.origin}/login` : undefined,
+    });
+    setSubmitting(false);
+    setSent(true);
   }
 
   return (
@@ -56,7 +62,7 @@ export default function ForgotPasswordPage() {
                 {submitting ? "Sending…" : "Send Reset Link"}
               </Button>
               <p className="text-center text-xs text-text-secondary">
-                Prototype only — no email is actually sent.
+                Sent via Supabase Auth&apos;s built-in email — real, but rate-limited on the free tier.
               </p>
             </form>
           ) : (
@@ -65,7 +71,7 @@ export default function ForgotPasswordPage() {
               <p className="mt-3 text-sm font-semibold text-text-primary">Check your email</p>
               <p className="mt-1 text-sm text-text-secondary">
                 If an account exists for <span className="font-medium text-text-primary">{getValues("email")}</span>,
-                a reset link has been sent (simulated).
+                a reset link has been sent.
               </p>
             </div>
           )}

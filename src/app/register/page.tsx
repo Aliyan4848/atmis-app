@@ -37,26 +37,24 @@ export default function RegisterPage() {
     ? Object.keys(PROVINCES.find((p) => p.name === province)!.districts)
     : [];
 
-  function onSubmit(values: RegisterValues) {
+  async function onSubmit(values: RegisterValues) {
     setSubmitting(true);
     setServerError("");
-    setTimeout(() => {
-      const result = doRegister({
-        fullName: values.fullName,
-        cnic: values.cnic,
-        phone: values.phone,
-        email: values.email,
-        province: values.province,
-        district: values.district,
-        password: values.password,
-      });
-      setSubmitting(false);
-      if (!result.ok) {
-        setServerError(result.error ?? "Registration failed.");
-        return;
-      }
-      router.push("/dashboard");
-    }, 500);
+    const result = await doRegister({
+      fullName: values.fullName,
+      cnic: values.cnic,
+      phone: values.phone,
+      email: values.email,
+      province: values.province,
+      district: values.district,
+      password: values.password,
+    });
+    setSubmitting(false);
+    if (!result.ok) {
+      setServerError(result.error ?? "Registration failed.");
+      return;
+    }
+    router.push("/dashboard");
   }
 
   return (
@@ -163,7 +161,7 @@ export default function RegisterPage() {
             </Button>
 
             <p className="text-center text-xs text-text-secondary">
-              This is a prototype — accounts are stored only in your browser, not on a real server.
+              Your account is created with Supabase Auth — a real account, not stored only in this browser.
             </p>
           </form>
         </CardContent>
