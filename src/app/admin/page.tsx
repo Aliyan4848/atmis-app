@@ -203,11 +203,6 @@ export default function AdminPage() {
           )}
         </CardContent>
       </Card>
-
-      <p className="mt-4 text-xs text-text-secondary">
-        Gated by a real is_admin flag checked both here and server-side on every API call — not
-        just a UI-level check. Data is real (Supabase), persisted across refreshes.
-      </p>
     </div>
   );
 }
